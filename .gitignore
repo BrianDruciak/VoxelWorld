@@ -1,0 +1,17 @@
+# Godot
+.godot/
+*.translation
+
+# Mono/.NET
+.mono/
+bin/
+obj/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vs/
+*.user
+*.suo
