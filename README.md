@@ -4,8 +4,11 @@ A roguelike extraction game built in Godot 4.6 with a procedurally generated vox
 
 ## Demo
 
-<!-- Replace the link below with your video/gif -->
-https://github.com/user-attachments/assets/YOUR_VIDEO_HERE
+
+
+https://github.com/user-attachments/assets/20101906-c091-439d-9d3c-ec49af45998c
+
+
 
 ## Gameplay Loop
 
