@@ -110,11 +110,21 @@ static var block_colors: Dictionary = {
 # All ore IDs (minable resources the player collects)
 static var ORE_IDS: Array[int] = [14, 15, 16, 17, 18, 19, 20, 21, 22]
 
+const CONSUMABLE_ID_BASE := 2000
+
+static var consumables: Dictionary = {
+	2000: {"name": "Health Potion", "heal": 30.0, "color": Color(0.9, 0.2, 0.3), "icon": "H"},
+	2001: {"name": "Greater Health Potion", "heal": 60.0, "color": Color(1.0, 0.15, 0.25), "icon": "H"},
+}
+
 const BARE_HANDS_SPEED := 0.5
 const WRONG_TOOL_MULT := 0.25
 
+static func is_consumable(item_id: int) -> bool:
+	return item_id >= CONSUMABLE_ID_BASE
+
 static func is_tool_item(item_id: int) -> bool:
-	return item_id >= TOOL_ID_BASE
+	return item_id >= TOOL_ID_BASE and item_id < CONSUMABLE_ID_BASE
 
 static func is_block(item_id: int) -> bool:
 	return item_id > 0 and item_id < TOOL_ID_BASE
@@ -125,15 +135,26 @@ static func is_ore(item_id: int) -> bool:
 static func get_stack_size(item_id: int) -> int:
 	if is_tool_item(item_id):
 		return 1
+	if is_consumable(item_id):
+		return 16
 	return 64
 
+static func get_consumable_data(item_id: int) -> Dictionary:
+	return consumables.get(item_id, {})
+
 static func get_item_name(item_id: int) -> String:
+	if is_consumable(item_id):
+		var c: Dictionary = consumables.get(item_id, {})
+		return c.get("name", "Unknown Consumable")
 	if is_tool_item(item_id):
 		var t: Dictionary = tools.get(item_id, {})
 		return t.get("name", "Unknown Tool")
 	return block_names.get(item_id, "Unknown")
 
 static func get_item_color(item_id: int) -> Color:
+	if is_consumable(item_id):
+		var c: Dictionary = consumables.get(item_id, {})
+		return c.get("color", Color(0.8, 0.2, 0.3))
 	if is_tool_item(item_id):
 		var t: Dictionary = tools.get(item_id, {})
 		return t.get("color", Color(0.5, 0.5, 0.5))

@@ -34,11 +34,18 @@ var _mining_progress: float = 0.0
 var _mining_time: float = 0.0
 var _is_mining := false
 
+const ATTACK_REACH := 4.0
+const ATTACK_DAMAGE := 10.0
+const ATTACK_COOLDOWN := 0.4
+
 signal block_mined(wx: int, wy: int, wz: int, block_id: int)
 signal block_placed(wx: int, wy: int, wz: int, block_id: int)
 signal health_changed(current: float, maximum: float)
 signal player_died
 signal mining_progress_changed(progress: float)
+signal used_consumable(item_id: int)
+
+var _attack_cooldown: float = 0.0
 
 
 func _ready() -> void:
@@ -110,6 +117,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if mb.pressed:
 			if mb.button_index == MOUSE_BUTTON_RIGHT:
 				_try_place_block()
+			elif mb.button_index == MOUSE_BUTTON_MIDDLE:
+				_try_use_consumable()
 			elif mb.button_index == MOUSE_BUTTON_WHEEL_UP:
 				_cycle_hotbar(-1)
 			elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -149,9 +158,12 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-	# Hold-to-mine
+	_attack_cooldown = maxf(_attack_cooldown - delta, 0.0)
+
+	# Hold-to-mine (only if not hitting an enemy)
 	if _captured and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		_process_mining(delta)
+		if not _try_attack_enemy():
+			_process_mining(delta)
 	elif _is_mining:
 		_reset_mining()
 
@@ -263,3 +275,60 @@ func _cycle_hotbar(dir: int) -> void:
 		idx = 0
 	inventory.selected_hotbar = idx
 	inventory.inventory_changed.emit()
+
+
+func _try_attack_enemy() -> bool:
+	if _attack_cooldown > 0.0:
+		return false
+
+	var origin: Vector3 = camera.global_position
+	var dir: Vector3 = -camera.global_basis.z.normalized()
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * ATTACK_REACH)
+	query.exclude = [get_rid()]
+	var result := space.intersect_ray(query)
+
+	if result.is_empty():
+		return false
+
+	var collider = result["collider"]
+	if collider is Enemy:
+		_attack_cooldown = ATTACK_COOLDOWN
+		var attack_dir: Vector3 = (collider.global_position - global_position).normalized()
+
+		var held: Dictionary = inventory.get_hotbar_slot()
+		var dmg := ATTACK_DAMAGE
+		if ItemDB.is_tool_item(held.get("id", 0)):
+			dmg += held.get("id", 0) % 10 * 3.0
+			inventory.deduct_durability(inventory.selected_hotbar)
+
+		collider.take_damage(dmg, attack_dir)
+		return true
+
+	return false
+
+
+func _try_use_consumable() -> void:
+	var held: Dictionary = inventory.get_hotbar_slot()
+	if held.is_empty():
+		return
+	var item_id: int = held.get("id", 0)
+	if not ItemDB.is_consumable(item_id):
+		return
+
+	var data: Dictionary = ItemDB.get_consumable_data(item_id)
+	if data.is_empty():
+		return
+
+	var heal_amount: float = data.get("heal", 0.0)
+	if heal_amount > 0.0 and current_health < max_health:
+		heal(heal_amount)
+		var slot_idx: int = inventory.selected_hotbar
+		var slot: Dictionary = inventory.get_slot(slot_idx)
+		var count: int = slot.get("count", 0)
+		if count <= 1:
+			inventory.set_slot(slot_idx, {})
+		else:
+			slot["count"] = count - 1
+			inventory.inventory_changed.emit()
+		used_consumable.emit(item_id)

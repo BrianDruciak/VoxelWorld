@@ -12,6 +12,8 @@ var run_manager: Node
 var upgrade_manager: Node
 var save_manager: Node
 var shop_manager: Node
+var enemy_spawner: Node
+var pickup_spawner: Node
 
 var _cs_ready := false
 var _spawn_pos := Vector3(8, 80, 8)
@@ -47,6 +49,8 @@ func _ready() -> void:
 	_setup_upgrade_manager()
 	_setup_shop_manager()
 	_setup_run_manager()
+	_setup_enemy_spawner()
+	_setup_pickup_spawner()
 
 	_start_new_run()
 
@@ -84,6 +88,22 @@ func _setup_shop_manager() -> void:
 	hud.shop_purchase_requested.connect(_on_shop_purchase)
 
 
+func _setup_enemy_spawner() -> void:
+	enemy_spawner = preload("res://scripts/EnemySpawner.gd").new()
+	enemy_spawner.name = "EnemySpawner"
+	add_child(enemy_spawner)
+	enemy_spawner.setup(player, chunk_manager)
+	enemy_spawner.loot_dropped.connect(_on_enemy_loot_dropped)
+
+
+func _setup_pickup_spawner() -> void:
+	pickup_spawner = preload("res://scripts/PickupSpawner.gd").new()
+	pickup_spawner.name = "PickupSpawner"
+	add_child(pickup_spawner)
+	pickup_spawner.setup(player, chunk_manager)
+	pickup_spawner.item_collected.connect(_on_pickup_collected)
+
+
 func _start_new_run() -> void:
 	var stats: Dictionary = upgrade_manager.get_all_stats()
 	player.reset_for_run(
@@ -118,6 +138,8 @@ func _start_new_run() -> void:
 	player._captured = true
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	run_manager.start_run()
+	enemy_spawner.start()
+	pickup_spawner.start()
 
 
 func _process(_delta: float) -> void:
@@ -234,7 +256,21 @@ func _on_extraction_progress(progress: float) -> void:
 		hud.update_extraction_progress(progress)
 
 
+func _on_enemy_loot_dropped(pos: Vector3, item_id: int, count: int) -> void:
+	var crystal := CrystalPickup.new()
+	crystal.initialize(item_id, count)
+	crystal.picked_up.connect(func(oid: int, cnt: int): player.inventory.add_item(oid, cnt))
+	add_child(crystal)
+	crystal.global_position = pos
+
+
+func _on_pickup_collected(item_id: int, count: int) -> void:
+	player.inventory.add_item(item_id, count)
+
+
 func _on_run_ended(success: bool) -> void:
+	enemy_spawner.stop()
+	pickup_spawner.stop()
 	if success:
 		var ores: Dictionary = player.inventory.remove_all_ores()
 		for ore_id in ores:

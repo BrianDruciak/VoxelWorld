@@ -16,10 +16,12 @@ const TOOL_LISTINGS: Array[Dictionary] = [
 
 # Supply listings: item_id (block), costs, qty given
 const SUPPLY_LISTINGS: Array[Dictionary] = [
-	{"item_id": 1, "costs": {18: 2}, "qty": 16},  # Stone x16
-	{"item_id": 2, "costs": {18: 1}, "qty": 16},  # Dirt x16
-	{"item_id": 6, "costs": {19: 2}, "qty": 16},  # Snow x16
-	{"item_id": 11, "costs": {16: 2}, "qty": 8},   # Obsidian x8
+	{"item_id": 1, "costs": {18: 2}, "qty": 16},     # Stone x16
+	{"item_id": 2, "costs": {18: 1}, "qty": 16},     # Dirt x16
+	{"item_id": 6, "costs": {19: 2}, "qty": 16},     # Snow x16
+	{"item_id": 11, "costs": {16: 2}, "qty": 8},     # Obsidian x8
+	{"item_id": 2000, "costs": {18: 3}, "qty": 3},   # Health Potion x3
+	{"item_id": 2001, "costs": {19: 5}, "qty": 2},   # Greater Health Potion x2
 ]
 
 # Purchased items waiting to be added to inventory at run start
@@ -70,6 +72,8 @@ func apply_pending_to_inventory(inv: Inventory) -> void:
 		var qty: int = item.get("qty", 1)
 		if ItemDB.is_tool_item(item_id):
 			inv.add_item(item_id, 1)
+		elif ItemDB.is_consumable(item_id):
+			inv.add_item(item_id, qty)
 		else:
 			inv.add_item(item_id, qty)
 	pending_items.clear()
